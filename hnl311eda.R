@@ -190,12 +190,10 @@ g +
 
 ##############################################################################
 
-
-
 # Try to change timespan unit from seconds to days for final graphs since this
 # will be easier for audience to wrap their minds around.
 
-##################### Attempt at reverse geocoding ##################### 
+##################### Attempt at reverse geocoding ########################## 
 library(revgeo)
 revgeo(longitude=-158.00, latitude=21.39, 
        provider = 'photon')  
@@ -210,10 +208,49 @@ rg_sample=rg_sample %>%
   select(id, location) %>%
   mutate(state='HI')
 
+# Need to split coordinates into separate fields to process file
+library(stringr)
+
+rg_sample$location=str_replace_all(rg_sample$location, "[)()]", "")
+rg_sample$location=strsplit(rg_sample$location, ', ')
+
+#rg_sample=rg_sample %>%
+#  mutate(latitude=location[:1], longitude=location[:2])
+
+#rg_sample=rg_sample %>% pivot_wider(location)
+rg_sample=rg_sample %>% unnest_wider(location, names_sep = "_")
+rg_sample=rg_sample %>% rename(latitude = location_1, longitude = location_2)
+
 write.csv(rg_sample, file='rgsample.csv')
 
-# Need to split coordinates into separate fields to process file
-strsplit(rg_sample$location, ', ')
+rgsample_complete  #Processing by Texas A&M looks good
+# To use this, I need to extract a sample of the records within my free limit
+# Then, join on id to add ComputedCity back to the sample
+# Then, analysis of anything having to do w/ComputedCity has to be done
+# against the sample.
+#################### DO NOT RUN AGAIN - PROCESSING COMPLETE ################# 
+# Preparing sample of 10% of data to reverse geocode
+#rg_sample10=sample_n(hnl311_nonulldates, 1741)
+
+#rg_sample10=rg_sample10 %>%
+#  select(id, location) %>%
+#  mutate(state='HI')
+
+#rg_sample10$location=str_replace_all(rg_sample10$location, "[)()]", "")
+#rg_sample10$location=strsplit(rg_sample10$location, ', ')
+
+#rg_sample10=rg_sample10 %>% unnest_wider(location, names_sep = "_")
+#rg_sample10=rg_sample10 %>% rename(latitude = location_1, longitude = location_2)
+
+#write.csv(rg_sample10, file='rgsample10.csv')
+#rgsample10_complete
+
+##############################################################################
+
+#rg_sample$latitude=rg_sample$...1
+#rg_sample$longitude=rg_sample$...2
+
+#rg_sample %>% pivot_wider(location)
 
 # Stop here for now... may be going down a rabbit hole w/this
 # All services I find cost money for the volume of data I'm processing
