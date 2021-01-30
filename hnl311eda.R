@@ -132,4 +132,100 @@ as.duration(min(as.duration(hnl311_nonulldates$timespan)))
 as.duration(max(as.duration(hnl311_nonulldates$timespan)))
 
 # I need to view the data in ggplot to visualize what's going on
+# Boxpolot of mean timespan from create to close for different Report Types
+g = ggplot(data = hnl311_nonulldates, aes(ReportType,as.duration(timespan)))
+g + 
+  geom_boxplot()
+# Shows that timespan is pretty wide for most categories.
+# Parking is the only category that has a limited span, but this could be 
+# due to not that many in the category
 
+hnl311_nonulldates %>%
+  filter(ReportType=='Parking')
+# Yes, only one entry for 'Parking' category
+
+# How many in each category
+g = ggplot(data = hnl311_nonulldates, aes(ReportType,))
+g + 
+  geom_bar()
+# Other than 'Other', Vehicle is the highest which makes sense because the vast
+# majority of SFHs in Hawaii are not in HOAs so there in no middleman to 
+# monitor and remedy the issue of abandoned vehicles.  These have to be 
+# reported to the City & County of Honolulu to address and it does take a long,
+# long time for them to deal with it all.
+
+
+# CurrentStatus of Closed vs Referred To Dept relating
+# to ReportType and timespan
+
+# Timespan by type in violin shape is interesting, but is this a graph that
+# the audience will be able to relate to
+g = ggplot(data = hnl311_nonulldates, aes(ReportType, timespan))
+g + 
+  geom_violin()
+
+######## INSIGHT INTO RELATIONSHIPS BETWEEN TIMESTAMP AND CURRENTSTATUS ######
+unique(hnl311_nonulldates$CurrentStatus)
+# [1] "Closed" "" 
+
+# This shows that by selecting only records w/no nulls in closed/converted,
+# there are no records w/a status of 'Referred to Dept'... showing that 
+# once a report is Referred, closure is no longer tracked by this system.
+# This explains the volume of null dates... probably, the vast majority of
+# those are 'Referred to Dept'
+
+unique(hnl311_wnulldates$CurrentStatus)
+# [1] "Referred To Dept" "Closed"           ""     
+
+# Visualizing CurrentStatus by clocondate null
+g = ggplot(data = hnl311_wnulldates, aes(CurrentStatus,))
+g + 
+  geom_bar()
+# Good amount in all statuses
+
+g = ggplot(data = hnl311_nonulldates, aes(CurrentStatus,))
+g + 
+  geom_bar()
+# Virtually all Closed... tiny amount empty
+
+##############################################################################
+
+
+
+# Try to change timespan unit from seconds to days for final graphs since this
+# will be easier for audience to wrap their minds around.
+
+##################### Attempt at reverse geocoding ##################### 
+library(revgeo)
+revgeo(longitude=-158.00, latitude=21.39, 
+       provider = 'photon')  
+#photon supposed to be free service, but doesn't work
+
+#21.396820276, -158.009726946 -- sample in Hawaii
+
+# Try sample file for Texas A&M reverse geocoding batch processing service
+# Signed up and have 2,500 record credit
+rg_sample=head(hnl311_nonulldates)
+rg_sample=rg_sample %>%
+  select(id, location) %>%
+  mutate(state='HI')
+
+write.csv(rg_sample, file='rgsample.csv')
+
+# Need to split coordinates into separate fields to process file
+strsplit(rg_sample$location, ', ')
+
+# Stop here for now... may be going down a rabbit hole w/this
+# All services I find cost money for the volume of data I'm processing
+# If I use this at all, I could sample 10% of the records since I have
+# a free 2,500 records I can process
+
+# IMPORTANT... I CAN STILL USE LOCATION TO POSSIBLY DISPLAY DATA IN A MAP
+# FORMAT, BUT ONLY IF IT SEEMS RELEVANT AND CAN BE DONE IN SUCH A WAY AS
+# TO CONVEY MEANINGFUL INFORMATION
+
+########################################################################
+
+
+
+  
