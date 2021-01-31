@@ -42,26 +42,26 @@ hnl311 = hnl311 %>%
     ReportType %in% Tree == TRUE ~ 'Tree',
     ReportType %in% Vehicle == TRUE ~ 'Vehicle',))
 
-# Filtering out records w/no HLReportType
-hnl311 = hnl311 %>%
-  filter(HLReportType != 'NA')
-# Reduces records by 10k out of 24k... the problem of nulls
+hnl311$HLReportType = 
+  factor(hnl311$HLReportType, 
+         levels=c('Vehicle','Water','Tree','RoadSafety','Trash','Homeless'), 
+         ordered=TRUE)
 
 
 
-######################## THIS SECION TO BE DELETED #######################
-# Exploratory use of ggplot to visualize parts of data that are already clean
+######################## REFINE OR DELETE #######################
+
 
 # Shows close to half the data is classified as Type OTHER
-#g = ggplot(data = hnl311, aes(ReportType,))
-#g + 
-#  geom_bar() 
+g = ggplot(data = hnl311, aes(ReportType,))
+g + 
+  geom_bar() 
 
 # Shows most in Closed status, <5000 Referred, <2000 Null
 # Probably as expected for an archive file
-#g = ggplot(data = hnl311, aes(CurrentStatus,))
-#g + 
-#  geom_bar() 
+g = ggplot(data = hnl311, aes(CurrentStatus,))
+g + 
+  geom_bar() 
 
 # Records with no Date Closed
 DateClosed_ConvertedEmpty = hnl311 %>%
@@ -81,6 +81,12 @@ DateCreate_ConvertedEmpty = hnl311 %>%
 
 ######################## END OF SECTION TO BE DELETED ######################
 
+############# REMOVING RECORDS W/NULL REPORTTYPE ##################
+
+# Filtering out records w/no HLReportType
+hnl311 = hnl311 %>%
+  filter(HLReportType != 'NA')
+# Reduces records by 10k out of 24k... the problem of nulls
 
 
 
@@ -120,50 +126,43 @@ avg_durations=hnl311_nonulldates %>%
 as.duration(mean(as.duration(hnl311_nonulldates$clocondate-
                              hnl311_nonulldates$crecondate)))
 # Returns [1] "71647924.6291083s (~2.27 years)"
-  
-as.duration(mean(hnl311_nonulldates$clocondate-
-                 hnl311_nonulldates$crecondate))
-# Also Returns [1] "71647924.6291083s (~2.27 years)"
 
-as.duration(median(hnl311_nonulldates$clocondate-
-                   hnl311_nonulldates$crecondate))
-# Median is not that different [1] "74782937s (~2.37 years)"
+mean(hnl311_nonulldates$WeeksToClose)
+# 103
+
+as.duration(median(as.duration(hnl311_nonulldates$clocondate-
+                               hnl311_nonulldates$crecondate)))
+# Returns [1] "35945243s (~1.14 years)"
+
+median(hnl311_nonulldates$WeeksToClose)
+# 59
 
 min(hnl311_nonulldates$clocondate)
 max(hnl311_nonulldates$clocondate)
 min(hnl311_nonulldates$crecondate)
 max(hnl311_nonulldates$crecondate)
+# Archive file includes records from 2011-11-05 TO 2019-02-12
 
-as.duration(min(as.duration(hnl311_nonulldates$timespan)))
-as.duration(max(as.duration(hnl311_nonulldates$timespan)))
+min(hnl311_nonulldates$WeeksToClose)
+max(hnl311_nonulldates$WeeksToClose)
+# From 0.0001240079 to 300.1307
 
-# Boxpolot of mean timespan from create to close for different Report Types
-g = ggplot(data = hnl311_nonulldates, aes(ReportType,as.duration(timespan)))
+# Boxpolot of Weeks to Close by HL Report Type
+g = ggplot(data = hnl311_nonulldates, aes(HLReportType,WeeksToClose))
 g + 
   geom_boxplot()
-# Shows that timespan is pretty wide for most categories except Parking
-
-hnl311_nonulldates %>%
-  filter(ReportType=='Parking')
-# Yes, only one entry for 'Parking' category
 
 # How many in each category
-g = ggplot(data = hnl311_nonulldates, aes(ReportType,))
+g = ggplot(data = hnl311_nonulldates, aes(HLReportType,))
 g + 
   geom_bar()
-# Other than 'Other', Vehicle is the highest which makes sense because the vast
-# majority of SFHs in Hawaii are not in HOAs so there in no middleman to 
-# monitor and remedy the issue of abandoned vehicles.  These have to be 
-# reported to the City & County of Honolulu to address and it does take a long,
-# long time for them to deal with it all.
-
 
 # CurrentStatus of Closed vs Referred To Dept relating
 # to ReportType and timespan
 
 # Timespan by type in violin shape is interesting, but is this a graph that
 # the audience will be able to relate to
-g = ggplot(data = hnl311_nonulldates, aes(ReportType, timespan))
+g = ggplot(data = hnl311_nonulldates, aes(HLReportType, WeeksToClose))
 g + 
   geom_violin()
 
@@ -184,12 +183,12 @@ unique(hnl311_wnulldates$CurrentStatus)
 g = ggplot(data = hnl311_wnulldates, aes(CurrentStatus,))
 g + 
   geom_bar()
-# Good amount in all statuses
+# If it does not have a closed date, it may be Referred, Closed, or Null
 
 g = ggplot(data = hnl311_nonulldates, aes(CurrentStatus,))
 g + 
   geom_bar()
-# Virtually all Closed... tiny amount empty
+# If it has a closed date, it is closed
 
 ###################### END OF REFINE OR DELETE ##############################
 
@@ -255,6 +254,10 @@ hnl311_wrg = hnl311_wrg %>%
     ComputedCity %in% Windward == TRUE ~ 'Windward',
     ComputedCity %in% Central == TRUE ~ 'Central',))
 
+hnl311_wrg$Area = 
+  factor(hnl311_wrg$Area, 
+         levels=c('NorthShore','EastHNL','Windward','Leeward','UrbanHNL'), 
+         ordered=TRUE)
 
 ############ FILTERING OUT AREA == NA ###########
 hnl311_wrg = hnl311_wrg %>%
@@ -284,38 +287,32 @@ hnl311_wrg_mhp$MedianHomePrice =
 
 #################### TO BE REFINED/DELETED #############################  
 
-# Visualizing Data by ComputedCity
+# Visualizing Data by Area
 
-g = ggplot(data = hnl311_wrg, aes(ComputedCity,))
+g = ggplot(data = hnl311_wrg, aes(Area,))
 g + 
   geom_bar()
-# Shows vast majority of reports come from the city of Honolulu
+# Shows vast majority of reports come from Urban HNL
 
-g = ggplot(data = hnl311_wrg, aes(ComputedCity,WeeksToClose))
+g = ggplot(data = hnl311_wrg, aes(Area,WeeksToClose))
 g + 
   geom_boxplot()
 
 unique(hnl311_wrg$Area)   
     
-g = ggplot(data = hnl311_wrg, aes(Area,))
-g + 
-  geom_bar()
 
 g = ggplot(data = hnl311_wrg, aes(Area,WeeksToClose))
 g + 
   geom_violin()
 
-g = ggplot(data = hnl311_wrg, aes(Area,timespan))
+g = ggplot(data = hnl311_wrg, aes(Area,WeeksToClose))
 g + 
   geom_boxplot()
   
-g = ggplot(data = hnl311_wrg, aes(Area, fill=ReportType))
-g + 
-  geom_bar(position='dodge')
-
 g = ggplot(data = hnl311_wrg, aes(Area, fill=HLReportType))
 g + 
   geom_bar(position='dodge')
+
 
 
 g = ggplot(data = hnl311_wrg, aes(Area, fill=HLReportType))
@@ -323,13 +320,8 @@ g +
   geom_bar(position='fill')
 
 
-# Look into relationship of Area to timespan some more... it may be the most
-# interesting thing about the data
-g = ggplot(data = hnl311_wrg, aes(Area, fill=HLReportType))
-g + 
-  geom_bar()
 
-g = ggplot(data = hnl311_wrg, aes(HLReportType))
+g = ggplot(data = hnl311, aes(HLReportType))
 g + 
   geom_bar()
 
@@ -349,25 +341,62 @@ g +
 
 ################## DON'T USE REVERSE GEOCODING ################
 
-# Number by Type (all) 
+# Number by Type (all)
+
+g = ggplot(data = hnl311, aes(HLReportType))
+g + 
+  geom_bar()
 
 # Timespan by Type (all) 
+
+g = ggplot(data = hnl311_nonulldates, aes(HLReportType, WeeksToClose))
+g + 
+  geom_boxplot()
 
 # Problem of Nulls - piechart to show how big null problem is
 
 ############### HLTYPE BY AREA/CITY/MHP PLOTS ################
 
 ################## MUST USE REVERSE GEOCODING ################
-
+############## TYPE BY AREA/CITY/MHP PLOTS ###############
 # User selects an Area, City, MPH Range or All
 # Graph is returned showing amounts of reports in each HLType
 
+hnl311_wrg %>%
+  filter(Area=='Windward') %>%
+  ggplot(aes(HLReportType)) +
+  geom_bar()
+
+hnl311_wrg %>%
+  filter(ComputedCity=='Kaneohe') %>%
+  ggplot(aes(HLReportType)) +
+  geom_bar()
+
+hnl311_wrg_mhp %>%
+  filter(MedianHomePrice=='900k+') %>%
+  ggplot(aes(HLReportType)) +
+  geom_bar()
+
 ############## TIMESPAN BY AREA/CITY/MHP PLOTS ###############
-
-################## MUST USE REVERSE GEOCODING ################
-
 # User selects an Area, City, MPH Range or All
 # Graph is returned showing timespan by HLType
+hnl311_wrg %>%
+  filter(Area=='Windward') %>%
+  ggplot(aes(HLReportType,WeeksToClose)) +
+  geom_boxplot()
+
+hnl311_wrg %>%
+  filter(ComputedCity=='Kaneohe') %>%
+  ggplot(aes(HLReportType,WeeksToClose)) +
+  geom_boxplot()
+
+hnl311_wrg_mhp %>%
+  filter(MedianHomePrice=='900k+') %>%
+  ggplot(aes(HLReportType,WeeksToClose)) +
+  geom_boxplot()
+
+
+
   
 
 
