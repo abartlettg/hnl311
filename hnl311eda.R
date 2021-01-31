@@ -228,6 +228,8 @@ rgsample_complete  #Processing by Texas A&M looks good
 # Then, join on id to add ComputedCity back to the sample
 # Then, analysis of anything having to do w/ComputedCity has to be done
 # against the sample.
+
+
 #################### DO NOT RUN AGAIN - PROCESSING COMPLETE ################# 
 # Preparing sample of 10% of data to reverse geocode
 #rg_sample10=sample_n(hnl311_nonulldates, 1741)
@@ -247,22 +249,96 @@ rgsample_complete  #Processing by Texas A&M looks good
 
 ##############################################################################
 
-#rg_sample$latitude=rg_sample$...1
-#rg_sample$longitude=rg_sample$...2
+############ JOINING REVERSE GEOCODE PROCESSED W/SAMPLE 10% DF ###############
 
-#rg_sample %>% pivot_wider(location)
-
-# Stop here for now... may be going down a rabbit hole w/this
-# All services I find cost money for the volume of data I'm processing
-# If I use this at all, I could sample 10% of the records since I have
-# a free 2,500 records I can process
-
-# IMPORTANT... I CAN STILL USE LOCATION TO POSSIBLY DISPLAY DATA IN A MAP
-# FORMAT, BUT ONLY IF IT SEEMS RELEVANT AND CAN BE DONE IN SUCH A WAY AS
-# TO CONVEY MEANINGFUL INFORMATION
-
-########################################################################
-
-
-
+hnl311_wrg = hnl311_nonulldates %>%
+  left_join(rgsample10_complete, by='id')
+ 
+hnl311_wrg = hnl311_wrg %>%
+  filter(ComputedCity != '')
   
+
+ComputedCities=unique(hnl311_wrg$ComputedCity)
+
+ComputedCities
+
+# Visualizing Data by ComputedCity
+
+g = ggplot(data = hnl311_wrg, aes(ComputedCity,))
+g + 
+  geom_bar()
+# Shows vast majority of reports come from the city of Honolulu
+
+g = ggplot(data = hnl311_wrg, aes(ComputedCity,timespan))
+g + 
+  geom_boxplot()
+# Results indicate that I need to group by area larger than city to
+# visualize any meaningful results.
+
+UrbanHNL = c('Urban Honolulu') 
+EastHNL = c('East Honolulu')
+Military = c('Wheeler AFB', 'Barbers Point N A S')
+Windward = c('Kaneohe', 'Kailua', 'Hauula', 'Waimanalo')
+Central = c('Mililani','Mililani Town', 'Wahiawa','Aiea','Pearl City',
+            'Waipahu','Waimalu')
+Leeward = c('Waianae','Ewa Beach','Kapolei','Ewa Gentry')
+NorthShore = c('Waialua','Haleiwa','Kahuku','Laie','Kaaawa')
+
+hnl311_wrg = hnl311_wrg %>%
+  mutate(Area=case_when(
+    ComputedCity %in% NorthShore == TRUE ~ 'NorthShore',
+    ComputedCity %in% Leeward == TRUE ~ 'Leeward',
+    ComputedCity %in% UrbanHNL == TRUE ~ 'UrbanHNL',
+    ComputedCity %in% EastHNL == TRUE ~ 'EastHNL',
+    ComputedCity %in% Military == TRUE ~ 'Military',
+    ComputedCity %in% Windward == TRUE ~ 'Windward',
+    ComputedCity %in% Central == TRUE ~ 'Central',))
+    
+unique(hnl311_wrg$Area)   
+    
+g = ggplot(data = hnl311_wrg, aes(Area,))
+g + 
+  geom_bar()
+
+g = ggplot(data = hnl311_wrg, aes(Area,timespan))
+g + 
+  geom_violin()
+
+g = ggplot(data = hnl311_wrg, aes(Area,timespan))
+g + 
+  geom_boxplot()
+  
+g = ggplot(data = hnl311_wrg, aes(Area, fill=ReportType))
+g + 
+  geom_bar(position='dodge')
+# This indicates a need to condense the # of Types for visualization
+
+ReportTypeValues
+
+RoadSafety = c("Broken / Vandalized signs", "Sign", "Light", "Pothole", 
+               "Roadway")
+Water = c("Stream", "Stormwater", "Flooding")
+Trash = c("Trash")
+Homeless = c("Homeless")
+Tree = c("Tree")
+Vehicle = c("Vehicle","Taxi","Parking")
+
+hnl311_wrg = hnl311_wrg %>%
+  mutate(HLReportType=case_when(
+    ReportType %in% RoadSafety == TRUE ~ 'RoadSafety',
+    ReportType %in% Water == TRUE ~ 'Water',
+    ReportType %in% Trash == TRUE ~ 'Trash',
+    ReportType %in% Homeless == TRUE ~ 'Homeless',
+    ReportType %in% Tree == TRUE ~ 'Tree',
+    ReportType %in% Vehicle == TRUE ~ 'Vehicle',))
+
+g = ggplot(data = hnl311_wrg, aes(Area, fill=HLReportType))
+g + 
+  geom_bar(position='dodge')
+# Need to exclude Other and NA for graphs.
+# A pie chart can be used to show how big the 'Other' category is in 
+# comparison to other data.
+# Reincorporate Military into geographic Areas... not enough data to consider
+# any difference.
+# Look into relationship of Area to timespan some more... it may be the most
+# interesting thing about the data
