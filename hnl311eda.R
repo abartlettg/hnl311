@@ -1,17 +1,7 @@
 # Adriana Bartlett Gray
 # EDA - Honolulu 311 Data
 
-################################################################################################
-# APPROACH TO EDA:
-# ================
-#   1 - Explore simple parts of data set (parts that do not require much clean-up or conversion)
-#   2 - Reverse Geocoding of Location (coordinates) to create a column for City
-#   3 - Explore relationship between City and variables other than Description
-#   4 - Text Analysis of Description field
-#         - If text analysis becomes too problematic as to threaten on-time completion, STOP
-#         - Otherwise, see how far I can go with this
-################################################################################################
-
+# Load libraries & read in files
 
 library(tidyr)
 library(dplyr)
@@ -19,21 +9,47 @@ library(ggplot2)
 library(lubridate)
 library(hms)
 
-hnl311 <- read.csv("C:/Users/adria/NYCDSA/Bootcamp/Project1/DataSets/Honolulu_311_archive.csv")
+hnl311 <- read.csv("Data/Honolulu_311_archive.csv")
+rgsample10_complete <- read_csv("Data/rgsample10_complete.csv")
+HIMedHomePrices <- read_csv("Data/HIMedHomePrices.csv")
 
 # Adding columns w/dates in proper date type using lubridate
-# Retaining original data in case I need it later
 hnl311 = hnl311 %>%
-  mutate(crecondate = mdy_hms(DateCreate_Converted), clocondate = mdy_hms(DateClosed_Converted))
-
-# Viewing unique values of categorical data
-unique(hnl311$ReportType)
-unique(hnl311$CurrentStatus)
+  mutate(crecondate = mdy_hms(DateCreate_Converted), 
+         clocondate = mdy_hms(DateClosed_Converted))
 
 # Saving unique values of categorical data for easy access later
 ReportTypeValues=unique(hnl311$ReportType)
 CurrentStatusValues=unique(hnl311$CurrentStatus)
 
+######## GROUPING REPORTTYPES FOR BETTER VISUALIZATION ########
+# This should be moved up to original file read in. #
+
+RoadSafety = c("Broken / Vandalized signs", "Sign", "Light", "Pothole", 
+               "Roadway")
+Water = c("Stream", "Stormwater", "Flooding")
+Trash = c("Trash")
+Homeless = c("Homeless")
+Tree = c("Tree")
+Vehicle = c("Vehicle","Taxi","Parking")
+
+hnl311 = hnl311 %>%
+  mutate(HLReportType=case_when(
+    ReportType %in% RoadSafety == TRUE ~ 'RoadSafety',
+    ReportType %in% Water == TRUE ~ 'Water',
+    ReportType %in% Trash == TRUE ~ 'Trash',
+    ReportType %in% Homeless == TRUE ~ 'Homeless',
+    ReportType %in% Tree == TRUE ~ 'Tree',
+    ReportType %in% Vehicle == TRUE ~ 'Vehicle',))
+
+# Filtering out records w/no HLReportType
+hnl311 = hnl311 %>%
+  filter(HLReportType != 'NA')
+# Reduces records by 10k out of 24k... the problem of nulls
+
+
+
+######################## THIS SECION TO BE DELETED #######################
 # Exploratory use of ggplot to visualize parts of data that are already clean
 
 # Shows close to half the data is classified as Type OTHER
@@ -47,51 +63,32 @@ CurrentStatusValues=unique(hnl311$CurrentStatus)
 #g + 
 #  geom_bar() 
 
-# But, I recall seeing a lot of NAs for DateClosed_Converted (clocondate)
-# Let's see how many nulls
+# Records with no Date Closed
 DateClosed_ConvertedEmpty = hnl311 %>%
   filter(DateClosed_Converted == '')
 # 6971/24375 --- approx 28%
-# This is very high considering this should be automatically time stamped
-# when the status is changed.
 
-# This could indicate a data integrity issue, but first, let's see if there
-# is a relationship between Status and these empty dates... perhaps, it 
-# is related to the 'Referred To Dept' status.
-
+# Percentage of those that are Referred
 g = ggplot(data = DateClosed_ConvertedEmpty, aes(CurrentStatus,))
 g + 
   geom_bar()
 # 4000/6971 --- approx 57% of empties are Referred
-# But, there are empty dates in all categories still indicating this is is
-# not an auto timestamp regardless of change in status OR the timestamp
-# can be deleted
 
-# Checking create/conv as well
+# Records with no Date Created
 DateCreate_ConvertedEmpty = hnl311 %>%
   filter(DateCreate_Converted == '') 
 # 790/24375 --- approx 3%
-# Not a large percentage, but shows this is not an auto timestamp OR the
-# timestamp can be deleted
 
-# I'm concerned that empty dates may not be random... that these dates
-# could be deleted or hidden for the purpose of reporting better statistics.
+######################## END OF SECTION TO BE DELETED ######################
 
-# Coming from a background of QA and Data Modeling, it's impossible for me
-# not to want to interview/ask questions of the IT bus analysts and users to
-# determine if there is a valid reason for empty dates... it's possible that
-# this is the result of a 'work-around' from the users' standpoint or that
-# this is not a field that should be used at all for calculating anything
-# meaningful in terms of response time from the IT bus analysts' standpoint.
-#
-# But, given that I can not interview/question anyone, I will move forward
-# with the disclaimer that the results coming from dates should not be used 
-# to make ANY conclusions unless/until we can get a better understanding of
-# how these dates are actually modeled/used.
 
-############# CAVEAT - QUESTIONBLE ASSUMPTIONS ############# 
 
-# Analysis of clocondate - crecondate
+
+
+
+############# SEPARATING DATA W/NULL DATES VS W/NO NULL DATES #############
+###### RECORDS W/NO NULL DATES TO BE USED FOR TIME TO CLOSE ANALYSIS ######
+### WHILE RETAINING FULL SET OF RECORDS FOR ANALYSIS NOT INVOLVING TIME ###
 
 # Separate out data w/nulls
 hnl311_nonulldates = hnl311 %>%
@@ -102,11 +99,20 @@ hnl311_wnulldates = hnl311 %>%
 # 17404+6971 = 24375 --- Note that there are no records that have a
 # closed/conv date that do not have a create/conv date
 
+# Adding timespan (represented in seconds)
 hnl311_nonulldates = hnl311_nonulldates %>%
   mutate(timespan = as.duration(clocondate-crecondate))
 
+# Adding WeeksToClose (represented in weeks for better visualization)
+hnl311_nonulldates = hnl311_nonulldates %>%
+  mutate(WeeksToClose=time_length(timespan,unit="weeks"))
+
+
+
+############################# REFINE OR DELETE###############################
+###################### CALCULATIONS & PLOTTING FOR EDA ###################### 
+
 avg_durations=hnl311_nonulldates %>%
- # select (ReportType, timespan) %>%
   group_by(ReportType) %>%
   summarize(avg=as.duration(mean(as.duration(timespan))))
 # Averages here span from 20.22 weeks to 2.87 years by ReportType
@@ -131,14 +137,11 @@ max(hnl311_nonulldates$crecondate)
 as.duration(min(as.duration(hnl311_nonulldates$timespan)))
 as.duration(max(as.duration(hnl311_nonulldates$timespan)))
 
-# I need to view the data in ggplot to visualize what's going on
 # Boxpolot of mean timespan from create to close for different Report Types
 g = ggplot(data = hnl311_nonulldates, aes(ReportType,as.duration(timespan)))
 g + 
   geom_boxplot()
-# Shows that timespan is pretty wide for most categories.
-# Parking is the only category that has a limited span, but this could be 
-# due to not that many in the category
+# Shows that timespan is pretty wide for most categories except Parking
 
 hnl311_nonulldates %>%
   filter(ReportType=='Parking')
@@ -188,50 +191,19 @@ g +
   geom_bar()
 # Virtually all Closed... tiny amount empty
 
-##############################################################################
-
-# Try to change timespan unit from seconds to days for final graphs since this
-# will be easier for audience to wrap their minds around.
-
-##################### Attempt at reverse geocoding ########################## 
-library(revgeo)
-revgeo(longitude=-158.00, latitude=21.39, 
-       provider = 'photon')  
-#photon supposed to be free service, but doesn't work
-
-#21.396820276, -158.009726946 -- sample in Hawaii
-
-# Try sample file for Texas A&M reverse geocoding batch processing service
-# Signed up and have 2,500 record credit
-rg_sample=head(hnl311_nonulldates)
-rg_sample=rg_sample %>%
-  select(id, location) %>%
-  mutate(state='HI')
-
-# Need to split coordinates into separate fields to process file
-library(stringr)
-
-rg_sample$location=str_replace_all(rg_sample$location, "[)()]", "")
-rg_sample$location=strsplit(rg_sample$location, ', ')
-
-#rg_sample=rg_sample %>%
-#  mutate(latitude=location[:1], longitude=location[:2])
-
-#rg_sample=rg_sample %>% pivot_wider(location)
-rg_sample=rg_sample %>% unnest_wider(location, names_sep = "_")
-rg_sample=rg_sample %>% rename(latitude = location_1, longitude = location_2)
-
-write.csv(rg_sample, file='rgsample.csv')
-
-rgsample_complete  #Processing by Texas A&M looks good
-# To use this, I need to extract a sample of the records within my free limit
-# Then, join on id to add ComputedCity back to the sample
-# Then, analysis of anything having to do w/ComputedCity has to be done
-# against the sample.
+###################### END OF REFINE OR DELETE ##############################
 
 
-#################### DO NOT RUN AGAIN - PROCESSING COMPLETE ################# 
-# Preparing sample of 10% of data to reverse geocode
+
+
+
+#################### DO NOT RUN AGAIN - PROCESSING COMPLETE #################
+########### ONE TIME RUN TO PREPARE SAMPLE FOR REVERSE GEOCODING ############
+########## COMMENTING & SAVING IN CASE FUNDING RECEIVED FOR FULL RG #########
+
+# Preparing sample of 10% of data to reverse geocode using Texas A&M free
+# batch geocoding (limited to 2500 records for free)
+
 #rg_sample10=sample_n(hnl311_nonulldates, 1741)
 
 #rg_sample10=rg_sample10 %>%
@@ -247,33 +219,24 @@ rgsample_complete  #Processing by Texas A&M looks good
 #write.csv(rg_sample10, file='rgsample10.csv')
 #rgsample10_complete
 
-##############################################################################
 
+
+
+
+
+######## THIS DATA ONLY TO BE USED WHEN SEGMENTING BY CITY/AREA/MHP ##########
+##############################################################################
 ############ JOINING REVERSE GEOCODE PROCESSED W/SAMPLE 10% DF ###############
 
+# Join processed reverse geocoding file w/ComputedCity
 hnl311_wrg = hnl311_nonulldates %>%
   left_join(rgsample10_complete, by='id')
- 
+
+# Remove records where reverse geocoding did not result in a ComputedCity
 hnl311_wrg = hnl311_wrg %>%
   filter(ComputedCity != '')
-  
 
-ComputedCities=unique(hnl311_wrg$ComputedCity)
-
-ComputedCities
-
-# Visualizing Data by ComputedCity
-
-g = ggplot(data = hnl311_wrg, aes(ComputedCity,))
-g + 
-  geom_bar()
-# Shows vast majority of reports come from the city of Honolulu
-
-g = ggplot(data = hnl311_wrg, aes(ComputedCity,timespan))
-g + 
-  geom_boxplot()
-# Results indicate that I need to group by area larger than city to
-# visualize any meaningful results.
+######## GROUPING CITIES INTO AREAS FOR BETTER VISUALIZATION ########
 
 UrbanHNL = c('Urban Honolulu') 
 EastHNL = c('East Honolulu')
@@ -291,14 +254,54 @@ hnl311_wrg = hnl311_wrg %>%
     ComputedCity %in% EastHNL == TRUE ~ 'EastHNL',
     ComputedCity %in% Windward == TRUE ~ 'Windward',
     ComputedCity %in% Central == TRUE ~ 'Central',))
-    
+
+
+############ FILTERING OUT AREA == NA ###########
+hnl311_wrg = hnl311_wrg %>%
+  filter(Area != 'NA')
+
+###### JOINING CENSUS DATA ON MEDIAN HOME PRICES BY CITY ######
+hnl311_wrg_mhp = inner_join(hnl311_wrg, HIMedHomePrices)
+
+
+#### PLACING MEDIUM HOME PRICES IN RANGES FOR BETTER VISUALIZATION ####
+hnl311_wrg_mhp = hnl311_wrg_mhp %>%
+  mutate(MedianHomePrice=case_when(
+    MHP>=300000 & MHP<=400000 ~ '300k+',
+    MHP>=400000 & MHP<=500000 ~ '400k+',
+    MHP>=500000 & MHP<=600000 ~ '500k+',
+    MHP>=600000 & MHP<=700000 ~ '600k+',
+    MHP>=700000 & MHP<=800000 ~ '700k+',
+    MHP>=800000 & MHP<=900000 ~ '800k+',
+    MHP>=900000 & MHP<=1000000 ~ '900k+',))
+
+# Make MedianHomePrice a Factor
+hnl311_wrg_mhp$MedianHomePrice = 
+  factor(hnl311_wrg_mhp$MedianHomePrice, 
+         levels=c('300k+','400k+','500k+','600k+','700k+','800k+','900k+'), 
+         ordered=TRUE)
+
+
+#################### TO BE REFINED/DELETED #############################  
+
+# Visualizing Data by ComputedCity
+
+g = ggplot(data = hnl311_wrg, aes(ComputedCity,))
+g + 
+  geom_bar()
+# Shows vast majority of reports come from the city of Honolulu
+
+g = ggplot(data = hnl311_wrg, aes(ComputedCity,WeeksToClose))
+g + 
+  geom_boxplot()
+
 unique(hnl311_wrg$Area)   
     
 g = ggplot(data = hnl311_wrg, aes(Area,))
 g + 
   geom_bar()
 
-g = ggplot(data = hnl311_wrg, aes(Area,timespan))
+g = ggplot(data = hnl311_wrg, aes(Area,WeeksToClose))
 g + 
   geom_violin()
 
@@ -309,43 +312,17 @@ g +
 g = ggplot(data = hnl311_wrg, aes(Area, fill=ReportType))
 g + 
   geom_bar(position='dodge')
-# This indicates a need to condense the # of Types for visualization
-
-ReportTypeValues
-
-RoadSafety = c("Broken / Vandalized signs", "Sign", "Light", "Pothole", 
-               "Roadway")
-Water = c("Stream", "Stormwater", "Flooding")
-Trash = c("Trash")
-Homeless = c("Homeless")
-Tree = c("Tree")
-Vehicle = c("Vehicle","Taxi","Parking")
-
-hnl311_wrg = hnl311_wrg %>%
-  mutate(HLReportType=case_when(
-    ReportType %in% RoadSafety == TRUE ~ 'RoadSafety',
-    ReportType %in% Water == TRUE ~ 'Water',
-    ReportType %in% Trash == TRUE ~ 'Trash',
-    ReportType %in% Homeless == TRUE ~ 'Homeless',
-    ReportType %in% Tree == TRUE ~ 'Tree',
-    ReportType %in% Vehicle == TRUE ~ 'Vehicle',))
 
 g = ggplot(data = hnl311_wrg, aes(Area, fill=HLReportType))
 g + 
   geom_bar(position='dodge')
 
-# Need to exclude Other and NA for graphs.
-hnl311_wrg = hnl311_wrg %>%
-  filter(HLReportType != 'NA', Area != 'NA')
 
 g = ggplot(data = hnl311_wrg, aes(Area, fill=HLReportType))
 g + 
   geom_bar(position='fill')
 
-# A pie chart can be used to show how big the 'Other' category is in 
-# comparison to other data.
-# Reincorporate Military into geographic Areas... not enough data to consider
-# any difference.
+
 # Look into relationship of Area to timespan some more... it may be the most
 # interesting thing about the data
 g = ggplot(data = hnl311_wrg, aes(Area, fill=HLReportType))
@@ -363,45 +340,36 @@ g +
 g = ggplot(data = hnl311_wrg, aes(HLReportType, timespan))
 g + 
   geom_boxplot()
+######################### END OF REFINE OR DELETE #######################
 
-###### Relationship between higher housing prices and types of complaints ######
-hnl311_wrg_mhp = inner_join(hnl311_wrg, HIMedHomePrices)
 
-g = ggplot(data = hnl311_wrg_mhp, aes(MHP, timespan))
-g + 
-  geom_boxplot()
+
+
+###################### OVERVIEW PLOTS #########################
+
+################## DON'T USE REVERSE GEOCODING ################
+
+# Number by Type (all) 
+
+# Timespan by Type (all) 
+
+# Problem of Nulls - piechart to show how big null problem is
+
+############### HLTYPE BY AREA/CITY/MHP PLOTS ################
+
+################## MUST USE REVERSE GEOCODING ################
+
+# User selects an Area, City, MPH Range or All
+# Graph is returned showing amounts of reports in each HLType
+
+############## TIMESPAN BY AREA/CITY/MHP PLOTS ###############
+
+################## MUST USE REVERSE GEOCODING ################
+
+# User selects an Area, City, MPH Range or All
+# Graph is returned showing timespan by HLType
   
 
-########## BY EDUCATION ANALYSIS - DIDN'T YIELD ANY SIGNIFICANCE ############
-# Add in Census Data for % of pop of each city with education of bachelor's
-# degree or higher... curious to find out if there's a relationship between
-# education and timespan to resolve reports... thinking maybe a more highly
-# educated person puts a better explanation in the report or follows up better.
-Kaneohe = 37.7
-Kailua = 49.5
-Waimanalo = 20.3
-UrbanHonolulu = 37.2
-EastHonolulu = 58.3
-Aiea = 36.4
-Waipahu = 17.1
-HickamHousing = 43.9
-Hauula
-MililaniTown = 35.3
-Haleiwa
-EwaBeach = 17.9
-Mililani = 52.3
-Waianae = 11.7
-Waialua = 
-Kapolei = 34.0
-Laie = 39.3
-WheelerAFB
-Kaaawa
-Kahuku
-BarbersPointNAS
-EwaGentry = 29.1
-Wahiawa = 22.8
-Waimalu = 31.1
-PearlCity = 32.8
-# Not showing any significant relationship between education and timespan to
-# resolve.
+
+
 
