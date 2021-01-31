@@ -277,11 +277,10 @@ g +
 
 UrbanHNL = c('Urban Honolulu') 
 EastHNL = c('East Honolulu')
-Military = c('Wheeler AFB', 'Barbers Point N A S')
 Windward = c('Kaneohe', 'Kailua', 'Hauula', 'Waimanalo')
 Central = c('Mililani','Mililani Town', 'Wahiawa','Aiea','Pearl City',
-            'Waipahu','Waimalu')
-Leeward = c('Waianae','Ewa Beach','Kapolei','Ewa Gentry')
+            'Waipahu','Waimalu', 'Wheeler AFB')
+Leeward = c('Waianae','Ewa Beach','Kapolei','Ewa Gentry', 'Barbers Point N A S')
 NorthShore = c('Waialua','Haleiwa','Kahuku','Laie','Kaaawa')
 
 hnl311_wrg = hnl311_wrg %>%
@@ -290,7 +289,6 @@ hnl311_wrg = hnl311_wrg %>%
     ComputedCity %in% Leeward == TRUE ~ 'Leeward',
     ComputedCity %in% UrbanHNL == TRUE ~ 'UrbanHNL',
     ComputedCity %in% EastHNL == TRUE ~ 'EastHNL',
-    ComputedCity %in% Military == TRUE ~ 'Military',
     ComputedCity %in% Windward == TRUE ~ 'Windward',
     ComputedCity %in% Central == TRUE ~ 'Central',))
     
@@ -335,10 +333,75 @@ hnl311_wrg = hnl311_wrg %>%
 g = ggplot(data = hnl311_wrg, aes(Area, fill=HLReportType))
 g + 
   geom_bar(position='dodge')
+
 # Need to exclude Other and NA for graphs.
+hnl311_wrg = hnl311_wrg %>%
+  filter(HLReportType != 'NA', Area != 'NA')
+
+g = ggplot(data = hnl311_wrg, aes(Area, fill=HLReportType))
+g + 
+  geom_bar(position='fill')
+
 # A pie chart can be used to show how big the 'Other' category is in 
 # comparison to other data.
 # Reincorporate Military into geographic Areas... not enough data to consider
 # any difference.
 # Look into relationship of Area to timespan some more... it may be the most
 # interesting thing about the data
+g = ggplot(data = hnl311_wrg, aes(Area, fill=HLReportType))
+g + 
+  geom_bar()
+
+g = ggplot(data = hnl311_wrg, aes(HLReportType))
+g + 
+  geom_bar()
+
+g = ggplot(data = hnl311_wrg, aes(Area, timespan))
+g + 
+  geom_boxplot()
+
+g = ggplot(data = hnl311_wrg, aes(HLReportType, timespan))
+g + 
+  geom_boxplot()
+
+###### Relationship between higher housing prices and types of complaints ######
+hnl311_wrg_mhp = inner_join(hnl311_wrg, HIMedHomePrices)
+
+g = ggplot(data = hnl311_wrg_mhp, aes(MHP, timespan))
+g + 
+  geom_boxplot()
+  
+
+########## BY EDUCATION ANALYSIS - DIDN'T YIELD ANY SIGNIFICANCE ############
+# Add in Census Data for % of pop of each city with education of bachelor's
+# degree or higher... curious to find out if there's a relationship between
+# education and timespan to resolve reports... thinking maybe a more highly
+# educated person puts a better explanation in the report or follows up better.
+Kaneohe = 37.7
+Kailua = 49.5
+Waimanalo = 20.3
+UrbanHonolulu = 37.2
+EastHonolulu = 58.3
+Aiea = 36.4
+Waipahu = 17.1
+HickamHousing = 43.9
+Hauula
+MililaniTown = 35.3
+Haleiwa
+EwaBeach = 17.9
+Mililani = 52.3
+Waianae = 11.7
+Waialua = 
+Kapolei = 34.0
+Laie = 39.3
+WheelerAFB
+Kaaawa
+Kahuku
+BarbersPointNAS
+EwaGentry = 29.1
+Wahiawa = 22.8
+Waimalu = 31.1
+PearlCity = 32.8
+# Not showing any significant relationship between education and timespan to
+# resolve.
+
