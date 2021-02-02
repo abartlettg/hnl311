@@ -18,12 +18,9 @@ hnl311 = hnl311 %>%
   mutate(crecondate = mdy_hms(DateCreate_Converted), 
          clocondate = mdy_hms(DateClosed_Converted))
 
-# Saving unique values of categorical data for easy access later
-ReportTypeValues=unique(hnl311$ReportType)
-CurrentStatusValues=unique(hnl311$CurrentStatus)
 
 ######## GROUPING REPORTTYPES FOR BETTER VISUALIZATION ########
-# This should be moved up to original file read in. #
+
 
 RoadSafety = c("Broken / Vandalized signs", "Sign", "Light", "Pothole", 
                "Roadway")
@@ -49,37 +46,6 @@ hnl311$HLReportType =
 
 
 
-######################## REFINE OR DELETE #######################
-
-
-# Shows close to half the data is classified as Type OTHER
-g = ggplot(data = hnl311, aes(ReportType,))
-g + 
-  geom_bar() 
-
-# Shows most in Closed status, <5000 Referred, <2000 Null
-# Probably as expected for an archive file
-g = ggplot(data = hnl311, aes(CurrentStatus,))
-g + 
-  geom_bar() 
-
-# Records with no Date Closed
-DateClosed_ConvertedEmpty = hnl311 %>%
-  filter(DateClosed_Converted == '')
-# 6971/24375 --- approx 28%
-
-# Percentage of those that are Referred
-g = ggplot(data = DateClosed_ConvertedEmpty, aes(CurrentStatus,))
-g + 
-  geom_bar()
-# 4000/6971 --- approx 57% of empties are Referred
-
-# Records with no Date Created
-DateCreate_ConvertedEmpty = hnl311 %>%
-  filter(DateCreate_Converted == '') 
-# 790/24375 --- approx 3%
-
-######################## END OF SECTION TO BE DELETED ######################
 
 ############# REMOVING RECORDS W/NULL REPORTTYPE ##################
 
@@ -115,86 +81,6 @@ hnl311_nonulldates = hnl311_nonulldates %>%
 
 
 
-############################# REFINE OR DELETE###############################
-###################### CALCULATIONS & PLOTTING FOR EDA ###################### 
-
-avg_durations=hnl311_nonulldates %>%
-  group_by(ReportType) %>%
-  summarize(avg=as.duration(mean(as.duration(timespan))))
-# Averages here span from 20.22 weeks to 2.87 years by ReportType
-
-as.duration(mean(as.duration(hnl311_nonulldates$clocondate-
-                             hnl311_nonulldates$crecondate)))
-# Returns [1] "71647924.6291083s (~2.27 years)"
-
-mean(hnl311_nonulldates$WeeksToClose)
-# 103
-
-as.duration(median(as.duration(hnl311_nonulldates$clocondate-
-                               hnl311_nonulldates$crecondate)))
-# Returns [1] "35945243s (~1.14 years)"
-
-median(hnl311_nonulldates$WeeksToClose)
-# 59
-
-min(hnl311_nonulldates$clocondate)
-max(hnl311_nonulldates$clocondate)
-min(hnl311_nonulldates$crecondate)
-max(hnl311_nonulldates$crecondate)
-# Archive file includes records from 2011-11-05 TO 2019-02-12
-
-min(hnl311_nonulldates$WeeksToClose)
-max(hnl311_nonulldates$WeeksToClose)
-# From 0.0001240079 to 300.1307
-
-# Boxpolot of Weeks to Close by HL Report Type
-g = ggplot(data = hnl311_nonulldates, aes(HLReportType,WeeksToClose))
-g + 
-  geom_boxplot()
-
-# How many in each category
-g = ggplot(data = hnl311_nonulldates, aes(HLReportType,))
-g + 
-  geom_bar()
-
-# CurrentStatus of Closed vs Referred To Dept relating
-# to ReportType and timespan
-
-# Timespan by type in violin shape is interesting, but is this a graph that
-# the audience will be able to relate to
-g = ggplot(data = hnl311_nonulldates, aes(HLReportType, WeeksToClose))
-g + 
-  geom_violin()
-
-######## INSIGHT INTO RELATIONSHIPS BETWEEN TIMESTAMP AND CURRENTSTATUS ######
-unique(hnl311_nonulldates$CurrentStatus)
-# [1] "Closed" "" 
-
-# This shows that by selecting only records w/no nulls in closed/converted,
-# there are no records w/a status of 'Referred to Dept'... showing that 
-# once a report is Referred, closure is no longer tracked by this system.
-# This explains the volume of null dates... probably, the vast majority of
-# those are 'Referred to Dept'
-
-unique(hnl311_wnulldates$CurrentStatus)
-# [1] "Referred To Dept" "Closed"           ""     
-
-# Visualizing CurrentStatus by clocondate null
-g = ggplot(data = hnl311_wnulldates, aes(CurrentStatus,))
-g + 
-  geom_bar()
-# If it does not have a closed date, it may be Referred, Closed, or Null
-
-g = ggplot(data = hnl311_nonulldates, aes(CurrentStatus,))
-g + 
-  geom_bar()
-# If it has a closed date, it is closed
-
-###################### END OF REFINE OR DELETE ##############################
-
-
-
-
 
 #################### DO NOT RUN AGAIN - PROCESSING COMPLETE #################
 ########### ONE TIME RUN TO PREPARE SAMPLE FOR REVERSE GEOCODING ############
@@ -213,14 +99,11 @@ g +
 #rg_sample10$location=strsplit(rg_sample10$location, ', ')
 
 #rg_sample10=rg_sample10 %>% unnest_wider(location, names_sep = "_")
-#rg_sample10=rg_sample10 %>% rename(latitude = location_1, longitude = location_2)
+#rg_sample10=rg_sample10 %>% 
+#            rename(latitude = location_1, longitude = location_2)
 
 #write.csv(rg_sample10, file='rgsample10.csv')
 #rgsample10_complete
-
-
-
-
 
 
 ######## THIS DATA ONLY TO BE USED WHEN SEGMENTING BY CITY/AREA/MHP ##########
@@ -285,62 +168,6 @@ hnl311_wrg_mhp$MedianHomePrice =
          ordered=TRUE)
 
 
-#################### TO BE REFINED/DELETED #############################  
-
-# Visualizing Data by Area
-
-g = ggplot(data = hnl311_wrg, aes(Area,))
-g + 
-  geom_bar()
-# Shows vast majority of reports come from Urban HNL
-
-g = ggplot(data = hnl311_wrg, aes(Area,WeeksToClose))
-g + 
-  geom_boxplot()
-
-unique(hnl311_wrg$Area)   
-    
-
-g = ggplot(data = hnl311_wrg, aes(Area,WeeksToClose))
-g + 
-  geom_violin()
-
-g = ggplot(data = hnl311_wrg, aes(Area,WeeksToClose))
-g + 
-  geom_boxplot()
-  
-g = ggplot(data = hnl311_wrg, aes(Area, fill=HLReportType))
-g + 
-  geom_bar(position='dodge')
-
-
-
-g = ggplot(data = hnl311_wrg, aes(Area, fill=HLReportType))
-g + 
-  geom_bar(position='fill')
-
-
-
-g = ggplot(data = hnl311, aes(HLReportType))
-g + 
-  geom_bar()
-
-g = ggplot(data = hnl311_wrg, aes(Area, timespan))
-g + 
-  geom_boxplot()
-
-g = ggplot(data = hnl311_wrg, aes(HLReportType, timespan))
-g + 
-  geom_boxplot()
-######################### END OF REFINE OR DELETE #######################
-
-
-##### Output Files to be used by Shiny App #####
-
-write.csv(hnl311, file='Output/hnl311.csv')
-write.csv(hnl311_wrg, file='Output/hnl311_wrg.csv')
-write.csv(hnl311_wrg_mhp, file='Output/hnl311_wrg_mhp.csv')
-write.csv(hnl311_nonulldates, file='Output/hnl311_nonulldates.csv')
 
 
 ###################### OVERVIEW PLOTS #########################
