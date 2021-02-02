@@ -1,10 +1,12 @@
-# GLOBAL -- Reading in Libraries and Data
+# Honolulu 311
+# GLOBAL
+# Adriana Bartlett Gray
 
+library(readr)
 library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(lubridate)
-library(readr)
 
 hnl311 <- read_csv("hnl311.csv")
 hnl311_nonulldates <- read_csv("hnl311_nonulldates.csv")
