@@ -18,13 +18,7 @@ shinyUI(fluidPage(
                          selected = 1),
             selectInput("select", label = h3("Select By Area or City or Median Home Price Range:"), 
                         choices = c('ALL AREAS',(unique(hnl311_wrg$Area)),'ALL CITIES',unique(hnl311_wrg$ComputedCity),
-                                    'ALL MHP RANGES','300ks','400ks','500ks','600ks','700ks','800ks','900ks'),
-                        selected = 1),
-            selectInput("select", label = h3("By City"), 
-                        choices = list("Choice 1" = 1, "Choice 2" = 2, "Choice 3" = 3), 
-                        selected = 1),
-            selectInput("select", label = h3("By Median Home Price Range:"), 
-                        choices = list("Choice 1" = 1, "Choice 2" = 2, "Choice 3" = 3), 
+                                    'ALL MHP RANGES','300ks','400ks','500ks','600ks','700ks','800ks','900ks'), 
                         selected = 1)
         ),
 

@@ -7,7 +7,7 @@ library(tidyr)
 library(dplyr)
 library(ggplot2)
 library(lubridate)
-library(hms)
+library(readr)
 
 hnl311 <- read.csv("Data/Honolulu_311_archive.csv")
 rgsample10_complete <- read_csv("Data/rgsample10_complete.csv")
@@ -96,7 +96,7 @@ hnl311 = hnl311 %>%
 ###### RECORDS W/NO NULL DATES TO BE USED FOR TIME TO CLOSE ANALYSIS ######
 ### WHILE RETAINING FULL SET OF RECORDS FOR ANALYSIS NOT INVOLVING TIME ###
 
-# Separate out data w/nulls
+# Filter out data w/nulls
 hnl311_nonulldates = hnl311 %>%
   filter(DateCreate_Converted != '' & DateClosed_Converted != '')
 
@@ -270,18 +270,18 @@ hnl311_wrg_mhp = inner_join(hnl311_wrg, HIMedHomePrices)
 #### PLACING MEDIUM HOME PRICES IN RANGES FOR BETTER VISUALIZATION ####
 hnl311_wrg_mhp = hnl311_wrg_mhp %>%
   mutate(MedianHomePrice=case_when(
-    MHP>=300000 & MHP<=400000 ~ '300k+',
-    MHP>=400000 & MHP<=500000 ~ '400k+',
-    MHP>=500000 & MHP<=600000 ~ '500k+',
-    MHP>=600000 & MHP<=700000 ~ '600k+',
-    MHP>=700000 & MHP<=800000 ~ '700k+',
-    MHP>=800000 & MHP<=900000 ~ '800k+',
-    MHP>=900000 & MHP<=1000000 ~ '900k+',))
+    MHP>=300000 & MHP<=400000 ~ '300ks',
+    MHP>=400000 & MHP<=500000 ~ '400ks',
+    MHP>=500000 & MHP<=600000 ~ '500ks',
+    MHP>=600000 & MHP<=700000 ~ '600ks',
+    MHP>=700000 & MHP<=800000 ~ '700ks',
+    MHP>=800000 & MHP<=900000 ~ '800ks',
+    MHP>=900000 & MHP<=1000000 ~ '900ks',))
 
 # Make MedianHomePrice a Factor
 hnl311_wrg_mhp$MedianHomePrice = 
   factor(hnl311_wrg_mhp$MedianHomePrice, 
-         levels=c('300k+','400k+','500k+','600k+','700k+','800k+','900k+'), 
+         levels=c('300ks','400ks','500ks','600ks','700ks','800ks','900ks'), 
          ordered=TRUE)
 
 
@@ -335,6 +335,12 @@ g +
 ######################### END OF REFINE OR DELETE #######################
 
 
+##### Output Files to be used by Shiny App #####
+
+write.csv(hnl311, file='Output/hnl311.csv')
+write.csv(hnl311_wrg, file='Output/hnl311_wrg.csv')
+write.csv(hnl311_wrg_mhp, file='Output/hnl311_wrg_mhp.csv')
+write.csv(hnl311_nonulldates, file='Output/hnl311_nonulldates.csv')
 
 
 ###################### OVERVIEW PLOTS #########################
